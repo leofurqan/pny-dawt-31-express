@@ -3,7 +3,6 @@ require("dotenv").config()
 require('./db')
 const bcrypt = require('bcrypt')
 
-
 //Routes
 const userRoutes = require("./routes/userRoutes")
 
