@@ -1,7 +1,6 @@
 const express = require("express")
 const bodyParser = require("body-parser")
 const joi = require("joi")
-const bcrypt = require("bcrypt")
 const router = express.Router()
 const auth = require('../middleware/auth')
 
@@ -23,7 +22,7 @@ const loginUserValidator = joi.object({
 })
 
 //Models
-const User = require("../models/User")
+const Product = require("../models/Product")
 
 const jsonParser = bodyParser.json()
 
@@ -31,15 +30,8 @@ router.post('/add', jsonParser, async (req, res) => {
     try {
         await addUserValidator.validateAsync(req.body)
 
-        const checkEmail = await User.findOne({ email: req.body.email })
-        if (!checkEmail) {
-            const user = new User(req.body)
-            await user.save()
-
-            res.send({ status: true, message: "User added successfully..." })
-        } else {
-            res.send({ status: false, message: "User already exists" })
-        }
+        const product = new Product(req.body)
+        await product.save()
     } catch (error) {
         console.log(error)
         res.send({ status: false, message: error.details[0].message })
