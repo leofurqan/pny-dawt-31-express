@@ -80,7 +80,7 @@ router.get('/:id', jsonParser, async (req, res) => {
     }
 })
 
-router.get('/', auth, jsonParser, async(req, res) => {
+router.get('/', jsonParser, async(req, res) => {
     try{
         const users = await User.find({}).select('-password')
 

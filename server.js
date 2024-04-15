@@ -1,15 +1,20 @@
 const express = require("express")
 require("dotenv").config()
 require('./db')
-const bcrypt = require('bcrypt')
-const jwt = require("jsonwebtoken")
+const exphb = require("express-handlebars")
 
 //Routes
+const websiteRoutes = require("./routes/websiteRoutes")
 const userRoutes = require("./routes/userRoutes")
 const productRoutes = require("./routes/productRoutes")
-
+ 
 const app = express()
 
+app.engine('handlebars', exphb.engine())
+app.set('view engine', 'handlebars')
+app.set('views', './views');
+
+app.use("/", websiteRoutes)
 app.use("/users", userRoutes)
 app.use("/products", productRoutes)
 
