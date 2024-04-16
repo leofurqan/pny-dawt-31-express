@@ -1,119 +1,157 @@
-const express = require("express")
-const bodyParser = require("body-parser")
-const joi = require("joi")
-const bcrypt = require("bcrypt")
-const router = express.Router()
-const auth = require('../middleware/auth')
+const express = require("express");
+const bodyParser = require("body-parser");
+const joi = require("joi");
+const bcrypt = require("bcrypt");
+const router = express.Router();
+const auth = require("../middleware/auth");
+const nodemailer = require("nodemailer");
+const fs = require("fs");
+const path = require("path")
+
+const transporter = nodemailer.createTransport({
+  host: "smtp.gmail.com",
+  port: 465,
+  secure: true,
+  auth: {
+    user: "leofurqan12@gmail.com",
+    pass: "nqgv wpdk gput ywas",
+  },
+});
 
 //Validators
 const addUserValidator = joi.object({
-    name: joi.string().required(),
-    email: joi.string().email().required(),
-    password: joi.string().required().min(8)
-})
+  name: joi.string().required(),
+  email: joi.string().email().required(),
+  password: joi.string().required().min(8),
+});
 
 const editUserValidator = joi.object({
-    name: joi.string().required(),
-    email: joi.string().email().required()
-})
+  name: joi.string().required(),
+  email: joi.string().email().required(),
+});
 
 const loginUserValidator = joi.object({
-    email: joi.string().email().required(),
-    password: joi.string().required().min(8)
-})
+  email: joi.string().email().required(),
+  password: joi.string().required().min(8),
+});
 
 //Models
-const User = require("../models/User")
+const User = require("../models/User");
 
-const jsonParser = bodyParser.json()
+const jsonParser = bodyParser.json();
 
-router.post('/add', jsonParser, async (req, res) => {
-    try {
-        await addUserValidator.validateAsync(req.body)
+router.post("/add", jsonParser, async (req, res) => {
+  try {
+    await addUserValidator.validateAsync(req.body);
 
-        const checkEmail = await User.findOne({ email: req.body.email })
-        if (!checkEmail) {
-            const user = new User(req.body)
-            await user.save()
+    const checkEmail = await User.findOne({ email: req.body.email });
+    if (!checkEmail) {
+      const user = new User(req.body);
+      await user.save();
 
-            res.send({ status: true, message: "User added successfully..." })
-        } else {
-            res.send({ status: false, message: "User already exists" })
+      fs.readFile(
+        path.join(__dirname, "../emails", "welcome.html"),
+        { encoding: "utf8" },
+        (err, html) => {
+          if (err) {
+            console.log(err);
+          } else {
+            const mailOptions = {
+              from: "leofurqan12@gmail.com",
+              to: user.email,
+              subject: "Welcome to Ecommerce",
+              html: html,
+            };
+
+            transporter.sendMail(mailOptions, (error, info) => {
+              if (error) {
+                console.error("Error sending email: ", error);
+              } else {
+                console.log("Email sent: ", info.response);
+              }
+            });
+          }
         }
-    } catch (error) {
-        console.log(error)
-        res.send({ status: false, message: error.details[0].message })
-    }
-})
+      );
 
-router.post('/login', jsonParser, async(req, res) => {
-    try {
-        await loginUserValidator.validateAsync(req.body)
-
-        const user = await User.findOne({email: req.body.email})
-
-        if(user) {
-            const match = await bcrypt.compare(req.body.password, user.password)
-
-            if(match) {
-                res.send({status: true, user: user, message: "Login Successfull..."})
-            } else {
-                res.send({status: false, message: "Invalid Credentials!!"})
-            }
-        } else {
-            res.send({status: false, message: "Invalid Credentials!!"})
-        }
-    } catch(error) {
-        console.log(error)
-        res.send({status: false, message: error.details[0].message})
-    }
-})
-
-router.get('/:id', jsonParser, async (req, res) => {
-    var user_id = req.params.id
-    const user = await User.findOne({_id: user_id}).select('-password')
-
-    if(user) {
-        res.send({status: true, user: user})
+      res.send({ status: true, message: "User added successfully..." });
     } else {
-        res.send({status: false, message: "User ID Invalid"})
+      res.send({ status: false, message: "User already exists" });
     }
-})
+  } catch (error) {
+    console.log(error);
+    res.send({ status: false, message: error.details[0].message });
+  }
+});
 
-router.get('/', jsonParser, async(req, res) => {
-    try{
-        const users = await User.find({}).select('-password')
+router.post("/login", jsonParser, async (req, res) => {
+  try {
+    await loginUserValidator.validateAsync(req.body);
 
-        if(users) {
-            res.send({status: true, users: users})
-        } else {
-            res.send({status: false, message: "No Users Found"})
-        }
-    } catch(error) {
-        console.log(error)
+    const user = await User.findOne({ email: req.body.email });
+
+    if (user) {
+      const match = await bcrypt.compare(req.body.password, user.password);
+
+      if (match) {
+        res.send({ status: true, user: user, message: "Login Successfull..." });
+      } else {
+        res.send({ status: false, message: "Invalid Credentials!!" });
+      }
+    } else {
+      res.send({ status: false, message: "Invalid Credentials!!" });
     }
-})
+  } catch (error) {
+    console.log(error);
+    res.send({ status: false, message: error.details[0].message });
+  }
+});
 
-router.patch('/:id', jsonParser, async (req, res) => {
-    try {
-        await editUserValidator.validateAsync(req.body)
+router.get("/:id", jsonParser, async (req, res) => {
+  var user_id = req.params.id;
+  const user = await User.findOne({ _id: user_id }).select("-password");
 
-        await User.findByIdAndUpdate(req.params.id, req.body)
-        res.send({status: true, message: "User updated successfully..."})
-    } catch(error) {
-        console.log(error)
+  if (user) {
+    res.send({ status: true, user: user });
+  } else {
+    res.send({ status: false, message: "User ID Invalid" });
+  }
+});
+
+router.get("/", jsonParser, async (req, res) => {
+  try {
+    const users = await User.find({}).select("-password");
+
+    if (users) {
+      res.send({ status: true, users: users });
+    } else {
+      res.send({ status: false, message: "No Users Found" });
     }
-})
+  } catch (error) {
+    console.log(error);
+  }
+});
 
-router.delete('/:id', jsonParser, async(req, res) => {
-    try {
-        const user_id = req.params.id
+router.patch("/:id", jsonParser, async (req, res) => {
+  try {
+    await editUserValidator.validateAsync(req.body);
 
-        await User.findByIdAndDelete(user_id)
-        res.send({status: true, message: "User deleted successfully..."})
-    } catch(error) {
-        console.log(error)
-    }
-})
+    await User.findByIdAndUpdate(req.params.id, req.body);
+    res.send({ status: true, message: "User updated successfully..." });
+  } catch (error) {
+    console.log(error);
+  }
+});
 
-module.exports = router
+router.delete("/:id", jsonParser, async (req, res) => {
+  try {
+    const user_id = req.params.id;
+
+    await User.findByIdAndDelete(user_id);
+    res.send({ status: true, message: "User deleted successfully..." });
+  } catch (error) {
+    console.log(error);
+  }
+});
+
+module.exports = router;
